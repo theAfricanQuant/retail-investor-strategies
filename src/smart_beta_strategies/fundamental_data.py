@@ -39,11 +39,10 @@ class FundamentalData(object):
         z_pb = (self.fundamentals[symbol].tail(1)["PB"] - self.fundamentals[symbol]["PB"].mean())/self.fundamentals[symbol]["PB"].std()
         z_pcf = (self.fundamentals[symbol].tail(1)["PCF"] - self.fundamentals[symbol]["PCF"].mean())/self.fundamentals[symbol]["PCF"].std()
         z_div_yield = (self.fundamentals[symbol].tail(1)["DY"] - self.fundamentals[symbol]["DY"].mean())/self.fundamentals[symbol]["DY"].std()
-        
+
         #calculate z score for stock
         return -1.0 * (0.25 * z_pe.values[0] if z_pe.any()  else 0.0 + 
         0.25* z_pb.values[0] if z_pb.any() else 0.0  + 0.25 * z_pcf.values[0] if z_pcf.any() else 0.0)
-        + (0.25 * z_div_yield.values[0] if z_div_yield.any() else 0.0)
     
     def getQualityZScore(self, symbol):
         '''

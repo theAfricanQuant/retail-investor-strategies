@@ -135,42 +135,42 @@ class SmartBetaStrategies(QCAlgorithm):
         '''
         # Initialize collection to store Z-Score
         zScores = {}
-        
+
         # Calculate Z-Score for top 500 stocks.
         for stock in self.fundametal_data.fundamentals.keys():
             if not self.Securities.ContainsKey(stock):
                 self.AddEquity(stock)
-           
+
             # Check if stock is tradable and lookback is valid.
             if self.fundametal_data.fundamentals[stock].shape[0] > self.lookback and self.Securities[stock].IsTradable:
-                
+
                 # Calculate Z-Score for individual stock
                 z_score = self.fundametal_data.getValueZScore(stock) \
-                if self.value_smart_beta else self.fundametal_data.getQualityZScore(stock)
-                
+                    if self.value_smart_beta else self.fundametal_data.getQualityZScore(stock)
+
                 # Store Z-Score into dictionary
                 zScores[stock] = z_score
-        
+
         if zScores:
-            # Sort Z-Scores in descending order
-            sorted_zScore = dict(sorted(zScores.items(), key=operator.itemgetter(1), reverse=True))
-            if sorted_zScore:
+            if sorted_zScore := dict(
+                sorted(zScores.items(), key=operator.itemgetter(1), reverse=True)
+            ):
                 # Take Top 50 stocks
                 long_stocks = {k: sorted_zScore[k] for k in list(sorted_zScore)[:50]}
-                
+
                 # Extract stocks which are in portfolio and invested
                 stocks_invested = [x.Key for x in self.Portfolio if x.Value.Invested]
-                
+
                 # Liquidate the stocks which are in portfolio but in top 50
                 for i in stocks_invested:
                     if i not in long_stocks.keys():
                         self.Liquidate(i)
-                
+
                 # Calculate winsor score for all long signaled stocks
-                winsor_score = sum([long_stocks[k] for k in long_stocks])
-                
+                winsor_score = sum(long_stocks[k] for k in long_stocks)
+
                 # Go long on top 50 stocks
-                for i in long_stocks.keys():
+                for i in long_stocks:
                     if not self.Securities.ContainsKey(i):
                         self.AddEquity(i)
                     self.SetHoldings(i, long_stocks[i]/winsor_score)

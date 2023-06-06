@@ -23,7 +23,6 @@ for key in keys:
     div_keys = [key[:4] for key in os.listdir(dividends_folder) if not key.startswith(".")]
     if key not in div_keys:
         print(key, 'passed')
-        pass
     else:
         print('processing ', key)
         dividends = pd.read_csv(os.path.join(dividends_folder, (key + ".ME.csv")), index_col=0, parse_dates=True)

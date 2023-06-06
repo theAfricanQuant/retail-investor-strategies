@@ -18,7 +18,7 @@ def check_breaks(file_names):
     breaches = []
     for i in file_names[1:]:
         expected_previous_end = dt.datetime.strptime(i[5:11], "%y%m%d") - dt.timedelta(days=1)
-        if not end == expected_previous_end:
+        if end != expected_previous_end:
             breaches.append([end, expected_previous_end])
         end = dt.datetime.strptime(i[-10:-4], "%y%m%d")
 
@@ -71,7 +71,7 @@ if __name__ == '__main__':
 
         with Pool() as pool:  # start 4 worker processes
             it = pool.imap(get_csv, files)
-            p = [df for df in it]
+            p = list(it)
             df_new = pd.concat(p, sort=False)
 
         t1 = dt.datetime.now()
