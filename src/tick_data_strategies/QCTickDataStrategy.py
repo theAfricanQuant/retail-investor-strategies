@@ -151,12 +151,11 @@ class QCTickDataStrategy(QCAlgorithm):
                         # set new stop time for position holding
                         self.stop_time_dict[k] = self.Time + RunConfig.PositionLifetime
 
-                        if not self.Portfolio[k].IsLong:  # if no long position invested
-                            if self.Portfolio[k].Invested:  # if short position
-                                self.Liquidate(k)
-                        else:
+                        if self.Portfolio[k].IsLong:
                             continue
 
+                        if self.Portfolio[k].Invested:  # if short position
+                            self.Liquidate(k)
                     elif dat.Side == -1 and not RunConfig.LongOnly:  # if not long only portfolio, and if short side
                         # set new stop time for position holding
                         self.stop_time_dict[k] = self.Time + RunConfig.PositionLifetime
@@ -282,13 +281,12 @@ class AdvancedBars(PythonData):
 
             path = data[config.Symbol.Value]
 
-            return SubscriptionDataSource(path, SubscriptionTransportMedium.RemoteFile);
-
         else:
             path = RunConfig.PathToLocalFolder + \
-                   f"/{config.Symbol.Value}_{str(RunConfig.VertBarDays)}_10.0_20-50_ind.csv"
+                       f"/{config.Symbol.Value}_{str(RunConfig.VertBarDays)}_10.0_20-50_ind.csv"
 
-            return SubscriptionDataSource(path, SubscriptionTransportMedium.RemoteFile);
+
+        return SubscriptionDataSource(path, SubscriptionTransportMedium.RemoteFile);
 
     def Reader(self, config, line, date, isLiveMode):
         """Standard QC data processing method

@@ -45,11 +45,9 @@ def new_batch_run(self, verbose=True, to_csv=False, output_path=None):
     if verbose:  # pragma: no cover
         print('Reading data in batches:')
 
-    # Read csv in batches
-    count = 0
     final_bars = []
     cols = ['date_time', 'open', 'high', 'low', 'close', 'volume']
-    for batch in iterations:
+    for count, batch in enumerate(iterations):
         if verbose:  # pragma: no cover
             print('Batch number:', count)
 
@@ -61,8 +59,6 @@ def new_batch_run(self, verbose=True, to_csv=False, output_path=None):
         else:
             # Append to bars list
             final_bars += list_bars
-        count += 1
-
         # Set flag to True: notify function to use cache
         self.flag = True
 
@@ -70,12 +66,7 @@ def new_batch_run(self, verbose=True, to_csv=False, output_path=None):
         print('Returning bars \n')
 
     # Return a DataFrame
-    if final_bars:
-        bars_df = pd.DataFrame(final_bars, columns=cols)
-        return bars_df
-
-    # Processed DataFrame is stored in .csv file, return None
-    return None
+    return pd.DataFrame(final_bars, columns=cols) if final_bars else None
 
 
 # update imported package to deal with advanced data structure and adjust it to reas 'parquet'
@@ -113,8 +104,7 @@ class TrippleBarrier(object):
         df0 = (pd.Series(close.index[df0 - 1], index=close.index[close.shape[0] - df0.shape[0]:]))
 
         df0 = close.loc[df0.index] / close.loc[df0.values].values - 1  # daily returns
-        df0 = df0.ewm(span=lookback).std()
-        return df0
+        return df0.ewm(span=lookback).std()
 
     # Snippet 2.4, page 39, The Symmetric CUSUM Filter.
     def cusum_filter(self, raw_time_series, threshold, time_stamps=True):
@@ -174,11 +164,7 @@ class TrippleBarrier(object):
                 t_events.append(tup.Index)
 
         # Return DatetimeIndex or list
-        if time_stamps:
-            event_timestamps = pd.DatetimeIndex(t_events)
-            return event_timestamps
-
-        return t_events
+        return pd.DatetimeIndex(t_events) if time_stamps else t_events
 
     # Snippet 3.4 page 49, Adding a Vertical Barrier
     def add_vertical_barrier(self, t_events, close, num_days=0, num_hours=0, num_minutes=0, num_seconds=0):
@@ -196,7 +182,8 @@ class TrippleBarrier(object):
         :return: (series) timestamps of vertical barriers
         """
         timedelta = pd.Timedelta(
-            '{} days, {} hours, {} minutes, {} seconds'.format(num_days, num_hours, num_minutes, num_seconds))
+            f'{num_days} days, {num_hours} hours, {num_minutes} minutes, {num_seconds} seconds'
+        )
         # Find index to closest to vertical barrier
         nearest_index = close.index.searchsorted(t_events + timedelta)
 
@@ -207,8 +194,7 @@ class TrippleBarrier(object):
         nearest_timestamp = close.index[nearest_index]
         filtered_events = t_events[:nearest_index.shape[0]]
 
-        vertical_barriers = pd.Series(data=nearest_timestamp, index=filtered_events)
-        return vertical_barriers
+        return pd.Series(data=nearest_timestamp, index=filtered_events)
 
     # Snippet 20.5 (page 306), the lin_parts function
     def lin_parts(self, num_atoms, num_threads):
@@ -310,8 +296,7 @@ class TrippleBarrier(object):
 
         jobs = []
         for i in range(1, len(parts)):
-            job = {pd_obj[0]: pd_obj[1][parts[i - 1]:parts[i]], 'func': func}
-            job.update(kargs)
+            job = {pd_obj[0]: pd_obj[1][parts[i - 1]:parts[i]], 'func': func} | kargs
             jobs.append(job)
 
         if num_threads == 1:
@@ -377,8 +362,7 @@ class TrippleBarrier(object):
         """
         func = kargs['func']
         del kargs['func']
-        out = func(**kargs)
-        return out
+        return func(**kargs)
 
     # Snippet 20.9.1, pg 312, Example of Asynchronous call to pythons multiprocessing library
     def report_progress(self, job_num, num_jobs, time0, task):
@@ -390,8 +374,19 @@ class TrippleBarrier(object):
         msg.append(msg[1] * (1 / msg[0] - 1))
         time_stamp = str(dt.datetime.fromtimestamp(time.time()))
 
-        msg = time_stamp + ' ' + str(round(msg[0] * 100, 2)) + '% ' + task + ' done after ' + str(
-            round(msg[1], 2)) + ' minutes. Remaining ' + str(round(msg[2], 2)) + ' minutes.'
+        msg = (
+            (
+                (
+                    f'{time_stamp} {str(round(msg[0] * 100, 2))}% '
+                    + task
+                    + ' done after '
+                    + str(round(msg[1], 2))
+                )
+                + ' minutes. Remaining '
+            )
+            + str(round(msg[2], 2))
+            + ' minutes.'
+        )
 
         if job_num < num_jobs:
             sys.stderr.write(msg + '\r')
@@ -649,7 +644,9 @@ pt_sl = [1, 2]
 fast = 20
 slow = 50
 
-get_dollar_bars_file_name = lambda key, est_ticks: f"{key}_{str(est_ticks)}_dollar_bars.csv"
+get_dollar_bars_file_name = (
+    lambda key, est_ticks: f"{key}_{est_ticks}_dollar_bars.csv"
+)
 
 for key in keys:
 

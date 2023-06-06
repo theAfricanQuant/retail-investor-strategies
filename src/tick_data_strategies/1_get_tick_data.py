@@ -48,7 +48,7 @@ class GetTickData(object):
     def set_folder(self, folder):
         """Creating a folder to store the data"""
         folder_target = os.path.join(folder, self.name)
-        if not (self.name in os.listdir(folder)):
+        if self.name not in os.listdir(folder):
             os.mkdir(folder_target)
         print("Target folder:", folder_target)
         return folder_target
@@ -57,18 +57,17 @@ class GetTickData(object):
         """Starting the web-driver for Firefox for further manipulations with the website
         """
         mime_csv = 'text/plain, application/csv, application/download,' + \
-                   ' text/comma-separated-values, text/csv, text/anytext,' + \
-                   ' application/csv, application/excel,' + \
-                   ' application/vnd.msexce, application/vnd.ms-excel,' + \
-                   ' attachment/csv, text/plain'
+                       ' text/comma-separated-values, text/csv, text/anytext,' + \
+                       ' application/csv, application/excel,' + \
+                       ' application/vnd.msexce, application/vnd.ms-excel,' + \
+                       ' attachment/csv, text/plain'
 
         fp = webdriver.FirefoxProfile()
         fp.set_preference('browser.download.folderList', 2)
         fp.set_preference('browser.download.manager.showWhenStarting', False)
         fp.set_preference('browser.download.dir', self.folder)
         fp.set_preference('browser.helperApps.neverAsk.saveToDisk', mime_csv)
-        driver = webdriver.Firefox(firefox_profile=fp)
-        return driver
+        return webdriver.Firefox(firefox_profile=fp)
 
     def set_company(self, name):
         """Selecting a company which data will be downloaded
@@ -120,12 +119,9 @@ class GetTickData(object):
 
         day_col, day_ind = self._get_date_position(date)
 
-        year_sel = '.ui-datepicker-year'
-        month_sel = '.ui-datepicker-month'
-
-        year = '/html/body/div[16]/div/div/select[2]/option[' + str(year_num) + ']'  # 40 - 2018
-        month = '/html/body/div[16]/div/div/select[1]/option[' + str(month_num) + ']'
-        day = '/html/body/div[16]/table/tbody/tr[' + str(day_ind) + ']/td[' + str(day_col) + ']/a'
+        year = f'/html/body/div[16]/div/div/select[2]/option[{str(year_num)}]'
+        month = f'/html/body/div[16]/div/div/select[1]/option[{str(month_num)}]'
+        day = f'/html/body/div[16]/table/tbody/tr[{str(day_ind)}]/td[{str(day_col)}]/a'
 
         try:
             select_calendar = self.wait.until(
@@ -135,7 +131,8 @@ class GetTickData(object):
             print('error date ', from_or_to, e)
             return False
 
-        if not previous.year == date.year:
+        if previous.year != date.year:
+            year_sel = '.ui-datepicker-year'
             try:
                 select_year = self.wait.until(
                     EC.visibility_of_element_located((By.CSS_SELECTOR, year_sel)))
@@ -152,7 +149,9 @@ class GetTickData(object):
                 print('error year ', from_or_to, e)
                 return False
 
-        if not previous.month == date.month:
+        if previous.month != date.month:
+            month_sel = '.ui-datepicker-month'
+
             try:
                 select_month = self.wait.until(
                     EC.visibility_of_element_located((By.CSS_SELECTOR, month_sel)))
@@ -260,9 +259,8 @@ class GetTickData(object):
 
         if downloaded_date_from <= date_from:
             return
-        else:
-            if downloaded_date_from < date_to:
-                date_to = downloaded_date_from - dt.timedelta(days=1)
+        if downloaded_date_from < date_to:
+            date_to = downloaded_date_from - dt.timedelta(days=1)
 
         # set temp dates to go through daterange in reversed chronological order
         temp_date_to = date_to
@@ -274,8 +272,13 @@ class GetTickData(object):
             self.files = os.listdir(self.folder)
             self.get_data(temp_date_from, temp_date_to)
 
-            expected_file_name = (self.name + "_" + dt.datetime.strftime(temp_date_from, "%y%m%d") + "_" +
-                                  dt.datetime.strftime(temp_date_to, "%y%m%d") + ".csv")
+            expected_file_name = (
+                f"{self.name}_"
+                + dt.datetime.strftime(temp_date_from, "%y%m%d")
+                + "_"
+                + dt.datetime.strftime(temp_date_to, "%y%m%d")
+                + ".csv"
+            )
 
             # waiting for the downloading to complete
             stop_time = dt.datetime.now() + dt.timedelta(minutes=30)
@@ -309,14 +312,12 @@ class GetTickData(object):
                 # self-adjusting period of download within size-limits
                 self.target_days = int((self.file_size / 2) * self.target_days / file_size)
                 temp_date_to = temp_date_from - dt.timedelta(days=1)
-                temp_date_from = temp_date_to - dt.timedelta(days=self.target_days)
             else:
                 file_name = os.path.basename(file_path)
                 print(f"File {file_name} beyond the file size, retrying")
                 os.remove(file_path)
                 self.target_days = self.target_days // 2
-                temp_date_from = temp_date_to - dt.timedelta(days=self.target_days)
-
+            temp_date_from = temp_date_to - dt.timedelta(days=self.target_days)
         return
 
     def close(self):
@@ -339,21 +340,9 @@ def main():
     if os.path.basename(folder) not in os.listdir(os.path.dirname(folder)):
         os.mkdir(folder)
 
-    if len(sys.argv) > 1:
-        key = sys.argv[1]
-    else:
-        key = 'GAZP'
-
-    if len(sys.argv) > 2:
-        date_from = sys.argv[2]
-    else:
-        date_from = "2009-01-01"
-
-    if len(sys.argv) > 3:
-        date_to = sys.argv[3]
-    else:
-        date_to = "2019-12-13"
-
+    key = sys.argv[1] if len(sys.argv) > 1 else 'GAZP'
+    date_from = sys.argv[2] if len(sys.argv) > 2 else "2009-01-01"
+    date_to = sys.argv[3] if len(sys.argv) > 3 else "2019-12-13"
     name = BLUE_CHIPS_DICT[key]
 
     asset = GetTickData(key, folder=folder)
